@@ -40,37 +40,175 @@ from bs4._typing import (
 )
 
 
+"""
+Updated SoupReplacer class for Milestone 3
+Replace the existing SoupReplacer class in bs4/filter.py with this version
+"""
+
+from typing import Optional, Callable, Dict, Any
+
 class SoupReplacer:
-    """
-    A class to replace specific HTML tags with alternative tags during parsing.
-    Similar to SoupStrainer but focused on tag replacement rather than filtering.
+    """Tag replacement and transformation filter to be applied during parsing.
+    
+    SoupReplacer can perform tag transformations in two very sweet ways:
+    
+    1. Simple string replacement (Milestone 2 approach):
+       replacer = SoupReplacer("b", "strong")
+       
+    2. Functional transformations (Milestone 3 approach):
+       replacer = SoupReplacer(name_xformer=lambda tag: "strong" if tag.name == "b" else tag.name)
+    
+    The functional approach is more powerful and allows for complex transformation logic.
+    
+    :param original_tag: (M2) The tag name to be replaced (e.g., "b")
+    :param replacement_tag: (M2) The tag name to use instead (e.g., "strong")
+    :param name_xformer: (M3) Function that takes a tag and returns a new name
+    :param attrs_xformer: (M3) Function that takes a tag and returns new attributes dict
+    :param xformer: (M3) Function that takes a tag and modifies it (no return value)
     """
     
-    def __init__(self, original_tag: str, replacement_tag: str):
-        """
-        Initialize a SoupReplacer with original and replacement tag names.
+    original_tag: Optional[str]
+    replacement_tag: Optional[str]
+    name_xformer: Optional[Callable]
+    attrs_xformer: Optional[Callable]
+    xformer: Optional[Callable]
+    
+    def __init__(
+        self,
+        original_tag: Optional[str] = None,
+        replacement_tag: Optional[str] = None,
+        name_xformer: Optional[Callable] = None,
+        attrs_xformer: Optional[Callable] = None,
+        xformer: Optional[Callable] = None
+    ):
+        """Create a SoupReplacer with either simple or functional transformation rules.
         
-        Args:
-            original_tag (str): The HTML tag to be replaced (e.g., 'b')
-            replacement_tag (str): The replacement tag (e.g., 'strong')
+        Examples:
+            # Milestone 2 style - simple replacement
+            replacer = SoupReplacer("b", "strong")
+            
+            # Milestone 3 style - name transformation
+            replacer = SoupReplacer(
+                name_xformer=lambda tag: "blockquote" if tag.name == "b" else tag.name
+            )
+            
+            # Milestone 3 style - attribute transformation
+            replacer = SoupReplacer(
+                attrs_xformer=lambda tag: {**tag.attrs, "class": "test"} if tag.name == "p" else tag.attrs
+            )
+            
+            # Milestone 3 style - side effects
+            def remove_class(tag):
+                if "class" in tag.attrs:
+                    del tag.attrs["class"]
+            
+            replacer = SoupReplacer(xformer=remove_class)
         """
+        # Milestone 2 approach (backwards compatibility)
         self.original_tag = original_tag
         self.replacement_tag = replacement_tag
-
-    def replace_if_needed(self, tag_name: str) -> str:
-        """
-        Check if a tag should be replaced and return the appropriate tag name.
         
-        Args:
-            tag_name (str): The name of the tag to check
-            
-        Returns:
-            str: Either the replacement tag name or the original tag name
+        # Milestone 3 approach (functional)
+        self.name_xformer = name_xformer
+        self.attrs_xformer = attrs_xformer
+        self.xformer = xformer
+        
+        # Validation: Make sure at least one replacement method is provided
+        if not any([
+            original_tag and replacement_tag,
+            name_xformer,
+            attrs_xformer,
+            xformer
+        ]):
+            raise ValueError(
+                "SoupReplacer requires at least one transformation method: "
+                "(original_tag + replacement_tag), name_xformer, attrs_xformer, or xformer"
+            )
+    
+    def replace_if_needed(self, tag_name: str) -> str:
+        """Simple string-based replacement (Milestone 2 compatibility).
+        
+        This method is kept for backwards compatibility with M2 approach.
+        For M3 functional approach, use apply_transformations() instead.
+        
+        :param tag_name: The name of the tag being processed
+        :return: Either the replacement_tag (if matched) or the original tag_name
         """
-        return self.replacement_tag if tag_name == self.original_tag else tag_name
-
+        if self.original_tag and self.replacement_tag:
+            if tag_name == self.original_tag:
+                return self.replacement_tag
+        return tag_name
+    
+    def apply_transformations(self, tag) -> None:
+        """Apply all functional transformations to a tag (Milestone 3 approach).
+        
+        This method applies transformers in the following order:
+        1. Simple name replacement (M2 compatibility)
+        2. name_xformer (if provided)
+        3. attrs_xformer (if provided)
+        4. xformer (if provided)
+        
+        :param tag: The Tag object to transform
+        """
+        # Milestone 2 compatibility: Simple string replacement
+        if self.original_tag and self.replacement_tag:
+            if tag.name == self.original_tag:
+                tag.name = self.replacement_tag
+        
+        # Milestone 3: Functional name transformation
+        if self.name_xformer:
+            try:
+                new_name = self.name_xformer(tag)
+                if new_name and isinstance(new_name, str):
+                    tag.name = new_name
+            except Exception as e:
+                # Don't break parsing if transformer fails
+                import warnings
+                warnings.warn(f"name_xformer failed: {e}", stacklevel=2)
+        
+        # Milestone 3: Functional attribute transformation
+        if self.attrs_xformer:
+            try:
+                new_attrs = self.attrs_xformer(tag)
+                if new_attrs is not None and isinstance(new_attrs, dict):
+                    tag.attrs = new_attrs
+            except Exception as e:
+                import warnings
+                warnings.warn(f"attrs_xformer failed: {e}", stacklevel=2)
+        
+        # Milestone 3: Side-effect transformer (modifies tag directly)
+        if self.xformer:
+            try:
+                self.xformer(tag)  # No return value expected
+            except Exception as e:
+                import warnings
+                warnings.warn(f"xformer failed: {e}", stacklevel=2)
+    
+    def has_functional_transformers(self) -> bool:
+        """Check if this replacer uses functional (M3) transformers.
+        
+        :return: True if any functional transformers are defined
+        """
+        return any([self.name_xformer, self.attrs_xformer, self.xformer])
+    
     def __repr__(self) -> str:
-        return f"SoupReplacer(original_tag='{self.original_tag}', replacement_tag='{self.replacement_tag}')"
+        """String representation for debugging."""
+        if self.original_tag and self.replacement_tag:
+            base = f"SoupReplacer('{self.original_tag}' -> '{self.replacement_tag}'"
+        else:
+            base = "SoupReplacer("
+        
+        details = []
+        if self.name_xformer:
+            details.append("name_xformer")
+        if self.attrs_xformer:
+            details.append("attrs_xformer")
+        if self.xformer:
+            details.append("xformer")
+        
+        if details:
+            return f"{base}, {', '.join(details)})"
+        return base + ")"
 
 
 class ElementFilter(object):
@@ -713,66 +851,3 @@ class SoupStrainer(ElementFilter):
         :meta private:
         """
         return element if self.match(element) else None
-
-class SoupReplacer:
-    """Tag replacement filter to be applied during parsing.
-    
-    Similar to `SoupStrainer` which filters elements during parsing,
-    `SoupReplacer` modifies tag names during parsing, avoiding the need
-    to traverse the parse tree after parsing is complete.
-    
-    A `SoupReplacer` can be passed to the `BeautifulSoup` constructor
-    as the `replacer` argument to replace all occurrences of one tag
-    type with another during the parsing process.
-    
-    Example usage::
-    
-        # Replace all <b> tags with <strong> during parsing
-        replacer = SoupReplacer("b", "strong")
-        soup = BeautifulSoup(html_doc, 'html.parser', replacer=replacer)
-        # All <b> tags are now <strong> tags in the parse tree
-        
-        # Replace all <i> tags with <em> during parsing
-        replacer = SoupReplacer("i", "em")
-        soup = BeautifulSoup(html_doc, 'html.parser', replacer=replacer)
-    
-    :param original_tag: The tag name to be replaced (e.g., "b")
-    :param replacement_tag: The tag name to use instead (e.g., "blockquote")
-    """
-    
-    original_tag: str
-    replacement_tag: str
-    
-    def __init__(self, original_tag: str, replacement_tag: str):
-        """Create a SoupReplacer that replaces one tag type with another.
-        
-        :param original_tag: The tag name to be replaced (e.g., "b")
-        :param replacement_tag: The tag name to use instead (e.g., "blockquote")
-        """
-        self.original_tag = original_tag
-        self.replacement_tag = replacement_tag
-    
-    def replace_if_needed(self, tag_name: str) -> str:
-        """Check if a tag name should be replaced and return the appropriate name.
-        
-        This method is called during parsing when the parser encounters a tag.
-        If the tag matches original_tag, it returns replacement_tag.
-        Otherwise, it returns the tag unchanged.
-        
-        :param tag_name: The name of the tag being processed
-        :return: Either the replacement_tag (if matched) or the original tag_name
-        
-        Example::
-        
-            replacer = SoupReplacer("b", "strong")
-            replacer.replace_if_needed("b")      # Returns "strong"
-            replacer.replace_if_needed("i")      # Returns "i" (unchanged)
-            replacer.replace_if_needed("div")    # Returns "div" (unchanged)
-        """
-        if tag_name == self.original_tag:
-            return self.replacement_tag
-        return tag_name
-    
-    def __repr__(self) -> str:
-        """String representation for debugging."""
-        return f"<{self.__class__.__name__} '{self.original_tag}' -> '{self.replacement_tag}'>"

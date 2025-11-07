@@ -136,9 +136,11 @@ class BeautifulSoupHTMLParser(HTMLParser, DetectsXMLParsedAsHTML):
         # just because its name matches a known empty-element tag. We
         # know that this is an empty-element tag, and we want to call
         # handle_endtag ourselves.
-        if self.soup.replacer:
+        
+        # M2/M3: Apply simple replacement before tag creation (if no functional transformers)
+        if self.soup.replacer and not self.soup.replacer.has_functional_transformers():
             name = self.soup.replacer.replace_if_needed(name)
-    
+
         self.handle_starttag(name, attrs, handle_empty_element=False)
         self.handle_endtag(name)
 
@@ -155,10 +157,10 @@ class BeautifulSoupHTMLParser(HTMLParser, DetectsXMLParsedAsHTML):
             an empty-element tag (i.e. there is not expected to be any
             closing tag).
         """
-        # Apply tag replacement if configured
-        if self.soup.replacer:
+        # M2/M3: Apply simple replacement before tag creation (if no functional transformers)
+        if self.soup.replacer and not self.soup.replacer.has_functional_transformers():
             name = self.soup.replacer.replace_if_needed(name)
-            
+                
         # TODO: handle namespaces here?
         attr_dict: AttributeDict = self.attribute_dict_class()
         for key, value in attrs:
@@ -190,6 +192,9 @@ class BeautifulSoupHTMLParser(HTMLParser, DetectsXMLParsedAsHTML):
         tag = self.soup.handle_starttag(
             name, None, None, attr_dict, sourceline=sourceline, sourcepos=sourcepos
         )
+        if self.soup.replacer and self.soup.replacer.has_functional_transformers():
+            self.soup.replacer.apply_transformations(tag)
+
         if tag and tag.is_empty_element and handle_empty_element:
             # Unlike other parsers, html.parser doesn't send separate end tag
             # events for empty-element tags. (It's handled in
