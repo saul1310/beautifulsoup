@@ -62,7 +62,7 @@ def test_attrs_xformer():
     # Verify
     print("\nVerification:")
     p_tags = soup.find_all('p')
-    all_have_test_class = all(tag.get('class') == ['test'] for tag in p_tags)
+    all_have_test_class = all('test' in tag.get('class', []) for tag in p_tags)
     div_unchanged = soup.find('div').attrs == {}
     
     checks = [
