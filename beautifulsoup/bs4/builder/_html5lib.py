@@ -447,6 +447,10 @@ class Element(BeautifulSoupNode):
             # The Tag constructor called this method when the Tag was created,
             # but we just set/changed the attributes, so call it again.
             self.soup.builder.set_up_substitutions(self.element)
+        
+        # M3: Apply functional transformations if replacer has them
+        if self.soup.replacer and self.soup.replacer.has_functional_transformers():
+            self.soup.replacer.apply_transformations(self.element)
 
     attributes = property(getAttributes, setAttributes)
 

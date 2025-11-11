@@ -192,8 +192,10 @@ class BeautifulSoupHTMLParser(HTMLParser, DetectsXMLParsedAsHTML):
         tag = self.soup.handle_starttag(
             name, None, None, attr_dict, sourceline=sourceline, sourcepos=sourcepos
         )
-        if self.soup.replacer and self.soup.replacer.has_functional_transformers():
+        # M3: Apply functional transformations if replacer has them
+        if tag and self.soup.replacer and self.soup.replacer.has_functional_transformers():
             self.soup.replacer.apply_transformations(tag)
+
 
         if tag and tag.is_empty_element and handle_empty_element:
             # Unlike other parsers, html.parser doesn't send separate end tag
