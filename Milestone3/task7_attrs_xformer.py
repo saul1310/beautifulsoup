@@ -109,9 +109,9 @@ def add_test_class_to_p_tags(input_file):
         print(f"  With class='test': {len(verify_with_test)}")
         
         if len(verify_with_test) == len(verify_p_tags):
-            print("  ✓ All <p> tags have class='test'")
+            print("  Nice, All <p> tags have class='test'")
         else:
-            print("  ⚠ Warning: Not all <p> tags have class='test'")
+            print("   Warning: Not all <p> tags have class='test'")
         
     except FileNotFoundError:
         print(f"Error: File '{input_file}' not found.")

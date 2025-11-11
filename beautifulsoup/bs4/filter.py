@@ -169,12 +169,16 @@ class SoupReplacer:
         # Milestone 3: Functional attribute transformation
         if self.attrs_xformer:
             try:
+                print(f"DEBUG: Before attrs_xformer - tag.name={tag.name}, tag.attrs={tag.attrs}")
                 new_attrs = self.attrs_xformer(tag)
+                print(f"DEBUG: attrs_xformer returned: {new_attrs}")
                 if new_attrs is not None and isinstance(new_attrs, dict):
                     tag.attrs = new_attrs
+                    print(f"DEBUG: After assignment - tag.attrs={tag.attrs}")
             except Exception as e:
                 import warnings
                 warnings.warn(f"attrs_xformer failed: {e}", stacklevel=2)
+                print(f"DEBUG: Exception: {e}")
         
         # Milestone 3: Side-effect transformer (modifies tag directly)
         if self.xformer:
