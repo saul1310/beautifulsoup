@@ -150,10 +150,19 @@ class SoupReplacer:
         
         :param tag: The Tag object to transform
         """
+        import sys
+        
+        # DEBUG: Log when transformation is called
+        debug_enabled = getattr(sys, '_bs4_debug_transform', False)
+        if debug_enabled:
+            print(f"DEBUG [apply_transformations]: Called for tag {tag.name if hasattr(tag, 'name') else 'unknown'}")
+        
         # Milestone 2 compatibility: Simple string replacement
         if self.original_tag and self.replacement_tag:
             if tag.name == self.original_tag:
                 tag.name = self.replacement_tag
+                if debug_enabled:
+                    print(f"DEBUG [apply_transformations]: M2 replacement: {self.original_tag} -> {self.replacement_tag}")
         
         # Milestone 3: Functional name transformation
         if self.name_xformer:
@@ -161,32 +170,53 @@ class SoupReplacer:
                 new_name = self.name_xformer(tag)
                 if new_name and isinstance(new_name, str):
                     tag.name = new_name
+                    if debug_enabled:
+                        print(f"DEBUG [apply_transformations]: name_xformer changed name to {new_name}")
             except Exception as e:
                 # Don't break parsing if transformer fails
                 import warnings
                 warnings.warn(f"name_xformer failed: {e}", stacklevel=2)
+                if debug_enabled:
+                    print(f"DEBUG [apply_transformations]: name_xformer exception: {e}")
         
         # Milestone 3: Functional attribute transformation
         if self.attrs_xformer:
             try:
-                print(f"DEBUG: Before attrs_xformer - tag.name={tag.name}, tag.attrs={tag.attrs}")
+                if debug_enabled:
+                    print(f"DEBUG [apply_transformations]: Before attrs_xformer - tag.name={tag.name}, tag.attrs={dict(tag.attrs)}")
+                
                 new_attrs = self.attrs_xformer(tag)
-                print(f"DEBUG: attrs_xformer returned: {new_attrs}")
+                
+                if debug_enabled:
+                    print(f"DEBUG [apply_transformations]: attrs_xformer returned: {new_attrs} (type: {type(new_attrs)})")
+                
                 if new_attrs is not None and isinstance(new_attrs, dict):
-                    tag.attrs = new_attrs
-                    print(f"DEBUG: After assignment - tag.attrs={tag.attrs}")
+                    # Clear existing attributes and set new ones
+                    tag.attrs.clear()
+                    tag.attrs.update(new_attrs)
+                    if debug_enabled:
+                        print(f"DEBUG [apply_transformations]: After assignment - tag.attrs={dict(tag.attrs)}")
+                elif debug_enabled:
+                    print(f"DEBUG [apply_transformations]: attrs_xformer returned non-dict or None: {new_attrs}")
             except Exception as e:
                 import warnings
                 warnings.warn(f"attrs_xformer failed: {e}", stacklevel=2)
-                print(f"DEBUG: Exception: {e}")
+                if debug_enabled:
+                    print(f"DEBUG [apply_transformations]: Exception in attrs_xformer: {e}")
+                    import traceback
+                    traceback.print_exc()
         
         # Milestone 3: Side-effect transformer (modifies tag directly)
         if self.xformer:
             try:
                 self.xformer(tag)  # No return value expected
+                if debug_enabled:
+                    print(f"DEBUG [apply_transformations]: xformer executed for tag {tag.name}")
             except Exception as e:
                 import warnings
                 warnings.warn(f"xformer failed: {e}", stacklevel=2)
+                if debug_enabled:
+                    print(f"DEBUG [apply_transformations]: Exception in xformer: {e}")
     
     def has_functional_transformers(self) -> bool:
         """Check if this replacer uses functional (M3) transformers.

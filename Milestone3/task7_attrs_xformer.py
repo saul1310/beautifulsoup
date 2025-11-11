@@ -5,7 +5,7 @@ Task 7 (Milestone 3): Add class="test" to all <p> tags using attrs_xformer
 This implements the same functionality as Milestone 1 Task 7, but uses
 the new SoupReplacer attrs_xformer API to apply transformations during parsing.
 
-Usage: python task7_attrs_xformer.py <input_file>
+Usage: python task7_attrs_xformer.py <input_file> [--debug]
 
 
 """
@@ -22,12 +22,17 @@ sys.path.insert(0, beautifulsoup_path)
 from bs4 import BeautifulSoup, SoupReplacer, XMLParsedAsHTMLWarning
 import warnings
 
-def add_test_class_to_p_tags(input_file):
+def add_test_class_to_p_tags(input_file, debug=False):
     """
     Add class="test" to all <p> tags using SoupReplacer with attrs_xformer.
     Replacement happens during parsing for optimal performance.
     """
     try:
+        # Enable debug mode if requested
+        if debug:
+            sys._bs4_debug_transform = True
+            print("[DEBUG MODE ENABLED]\n")
+        
         # Read input file
         with open(input_file, 'r', encoding='utf-8-sig') as f:
             content = f.read()
@@ -63,9 +68,27 @@ def add_test_class_to_p_tags(input_file):
             warnings.filterwarnings('ignore', category=XMLParsedAsHTMLWarning)
             soup = BeautifulSoup(content, 'html.parser', replacer=replacer)
         
-        # Count modified tags
+        # Count modified tags. Be tolerant: class attribute may be a
+        # string ("test") or a list-like (['test']) depending on parser.
         p_tags = soup.find_all('p')
-        p_with_test_class = [tag for tag in p_tags if tag.get('class') == ['test']]
+
+        def has_test_class(tag):
+            c = tag.get('class')
+            if c is None:
+                return False
+            # Strings should be compared directly
+            if isinstance(c, str):
+                return c == 'test'
+            # Any iterable (list-like) -> check membership
+            try:
+                from collections.abc import Iterable
+                if isinstance(c, Iterable):
+                    return 'test' in c
+            except Exception:
+                pass
+            return False
+
+        p_with_test_class = [tag for tag in p_tags if has_test_class(tag)]
         
         print(f"Results:")
         print(f"  Total <p> tags found: {len(p_tags)}")
@@ -103,7 +126,23 @@ def add_test_class_to_p_tags(input_file):
             verify_soup = BeautifulSoup(verify_content, 'html.parser')
         
         verify_p_tags = verify_soup.find_all('p')
-        verify_with_test = [tag for tag in verify_p_tags if tag.get('class') == ['test']]
+
+        def has_test_class_verify(tag):
+            # Reuse same tolerant check for verification parse
+            c = tag.get('class')
+            if c is None:
+                return False
+            if isinstance(c, str):
+                return c == 'test'
+            try:
+                from collections.abc import Iterable
+                if isinstance(c, Iterable):
+                    return 'test' in c
+            except Exception:
+                pass
+            return False
+
+        verify_with_test = [tag for tag in verify_p_tags if has_test_class_verify(tag)]
         
         print(f"  <p> tags in output: {len(verify_p_tags)}")
         print(f"  With class='test': {len(verify_with_test)}")
@@ -123,8 +162,8 @@ def add_test_class_to_p_tags(input_file):
         sys.exit(1)
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python task7_attrs_xformer.py <input_file>")
+    if len(sys.argv) < 2:
+        print("Usage: python task7_attrs_xformer.py <input_file> [--debug]")
         print("\nThis program uses SoupReplacer with attrs_xformer to add")
         print("class='test' to all <p> tags during parsing (Milestone 3 approach).")
         print("\nComparison:")
@@ -133,4 +172,5 @@ if __name__ == "__main__":
         sys.exit(1)
     
     input_file = sys.argv[1]
-    add_test_class_to_p_tags(input_file)
+    debug = '--debug' in sys.argv
+    add_test_class_to_p_tags(input_file, debug=debug)

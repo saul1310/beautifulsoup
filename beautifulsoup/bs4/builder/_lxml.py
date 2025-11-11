@@ -390,13 +390,16 @@ class LXMLTreeBuilderForXML(TreeBuilder):
 
         namespace, tag = self._getNsTag(tag)
         nsprefix = self._prefix_for_namespace(namespace)
-        self.soup.handle_starttag(
+        created_tag = self.soup.handle_starttag(
             tag,
             namespace,
             nsprefix,
             final_attrs,
             namespaces=self.active_namespace_prefixes[-1],
         )
+        # M3: Apply functional transformations if replacer has them
+        if created_tag and self.soup.replacer and self.soup.replacer.has_functional_transformers():
+            self.soup.replacer.apply_transformations(created_tag)
 
     def _prefix_for_namespace(
         self, namespace: Optional[_NamespaceURL]
