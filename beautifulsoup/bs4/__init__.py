@@ -167,6 +167,31 @@ class BeautifulSoup(Tag):
     #: Since `BeautifulSoup` subclasses `Tag`, it's possible to treat it as
     #: a `Tag` with a `Tag.name`. Hoever, this name makes it clear the
     #: `BeautifulSoup` object isn't a real markup tag.
+    def __iter__(self):
+        """Make BeautifulSoup iterable by yielding all descendants.
+        
+        Since BeautifulSoup inherits from Tag, it acts as the root of the
+        parse tree. This method yields all descendant nodes (both tags and
+        text nodes) without collecting them into a list first.
+        
+        Yields:
+            PageElement: Each node in the tree, one at a time
+        """
+        # BeautifulSoup IS the root Tag, so we use self.descendants directly
+        for descendant in self.descendants:
+            yield descendant
+
+    def __next__(self):
+        """Support for iterator protocol.
+        
+        Note: Since __iter__ returns a generator, __next__ is handled 
+        automatically by Python. This is here for protocol completeness.
+        """
+        raise TypeError(
+            "BeautifulSoup object is iterable but not an iterator. "
+            "Use 'for node in soup' or 'iter(soup)' instead."
+        )
+  
     ROOT_TAG_NAME: str = "[document]"
 
     #: If the end-user gives no indication which tree builder they
