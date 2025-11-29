@@ -153,11 +153,3 @@ Lists every BeautifulSoup API function/class that I used in the the Milestone-1 
   - `def handle_endtag(...)` — present and now contains replacer check (local modification)
 
 
----
-
-If you'd like, next steps I can take for you:
-1. Fetch the original upstream BeautifulSoup 4.13.0 source and provide verified upstream file+line numbers (so the references truly match "before any local edits").
-2. Generate a compact CSV or machine-readable mapping instead of a Markdown README.
-3. Include code snippets showing the exact lines from the bs4 source for each API item.
-
-Which of the next steps would you like me to take? (I can continue and fetch upstream sources to provide exact upstream line numbers if you want fully original references.)
